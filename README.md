@@ -57,6 +57,13 @@
 - 需要最高兼容性：优先选择最新版 **Mihomo**
 
 
+Mihomo Windows 版下载后通常这样启动：
+打开cmd -f 就是配置的路径,这个是同文件夹
+
+mihomo-windows-amd64.exe -f config.yaml
+
+
+
 粘贴最新的 Clash/Mihomo 完整配置。
 
 根据需要添加额外 YAML 节点。
