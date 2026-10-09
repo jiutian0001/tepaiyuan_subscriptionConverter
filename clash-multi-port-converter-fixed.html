@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clash 多端口 SOCKS 生成器 - 一端口一节点</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c0e14;
+      --surface: #151823;
+      --surface2: #1c2030;
+      --border: #2a2f45;
+      --accent: #6c8aff;
+      --accent2: #4ecdc4;
+      --accent-glow: rgba(108,138,255,0.15);
+      --text: #e0e4f0;
+      --text2: #8890a8;
+      --danger: #ff6b6b;
+      --success: #4ecdc4;
+      --mono: 'JetBrains Mono', 'Consolas', monospace;
+      --sans: 'Noto Sans SC', system-ui, sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background:
+        radial-gradient(ellipse 600px 400px at 20% 10%, rgba(108,138,255,0.06), transparent),
+        radial-gradient(ellipse 500px 300px at 80% 80%, rgba(78,205,196,0.04), transparent);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    header {
+      text-align: center;
+      padding: 40px 0 30px;
+    }
+
+    header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+
+    header p {
+      color: var(--text2);
+      font-size: 14px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text2);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-title .num {
+      background: var(--accent);
+      color: #fff;
+      width: 22px; height: 22px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 280px;
+      padding: 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.6;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    textarea:focus { border-color: var(--accent); }
+
+    textarea::placeholder { color: #4a5070; }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: end;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field label {
+      font-size: 12px;
+      color: var(--text2);
+      font-weight: 500;
+    }
+
+    input[type="number"], select {
+      padding: 10px 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 14px;
+      outline: none;
+      width: 140px;
+    }
+
+    select { width: 160px; cursor: pointer; }
+    select option { background: var(--surface); }
+    input:focus, select:focus { border-color: var(--accent); }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-family: var(--sans);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #5a7aee);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(108,138,255,0.25);
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 24px rgba(108,138,255,0.35);
+    }
+
+    .btn-secondary {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: var(--border); }
+
+    .btn-success {
+      background: linear-gradient(135deg, var(--accent2), #3db8b0);
+      color: #0c0e14;
+    }
+    .btn-success:hover { transform: translateY(-1px); }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid rgba(255,107,107,0.3);
+    }
+    .btn-danger:hover { background: rgba(255,107,107,0.1); }
+
+    .output-wrap {
+      position: relative;
+    }
+
+    #output {
+      width: 100%;
+      min-height: 300px;
+      max-height: 500px;
+      padding: 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--accent2);
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.6;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .stats {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      background: var(--accent-glow);
+      border: 1px solid rgba(108,138,255,0.2);
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 13px;
+    }
+
+    .stat strong {
+      color: var(--accent);
+      font-family: var(--mono);
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--text2);
+      margin-top: 8px;
+      line-height: 1.6;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--success);
+      color: var(--bg);
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 999;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (max-width: 600px) {
+      body { padding: 12px; }
+      header h1 { font-size: 22px; }
+      .card { padding: 16px; }
+      textarea { min-height: 200px; font-size: 11px; }
+      .row { flex-direction: column; }
+      input[type="number"], select { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Clash 多端口 SOCKS 生成器</h1>
+      <p>一个端口对应一个节点 · 生成 Clash/Mihomo listeners 配置</p>
+    </header>
+
+    <!-- Step 1: Input A - Full YAML -->
+    <div class="card">
+      <div class="card-title"><span class="num">1</span> 完整 config.yaml（机场订阅转换后的配置）</div>
+
+      <textarea id="inputYaml" placeholder="粘贴完整的 Clash config.yaml，工具会自动提取其中的 proxies。
+
+例如：
+allow-lan: true
+dns:
+  enable: true
+  ...
+proxies:
+  - name: 香港 01
+    type: vmess
+    server: ...
+proxy-groups:
+  ...
+rules:
+  ..."></textarea>
+
+      <div class="hint">💡 粘贴机场订阅转换后的完整配置文件，工具会提取其中的 proxies 部分。</div>
+    </div>
+
+    <!-- Step 1b: Input B - Extra proxies -->
+    <div class="card">
+      <div class="card-title"><span class="num">2</span> 额外 proxies 列表（自建节点等，可选）</div>
+
+      <textarea id="inputExtra" style="min-height:160px;" placeholder="粘贴额外的节点，会追加到上面的 proxies 后面。
+
+支持格式：
+① 带 proxies: 头的 YAML
+② 直接 - name: 开头的列表
+③ 节点链接（ss:// vmess:// vless:// trojan:// hy2://）每行一个"></textarea>
+
+      <div class="hint">💡 可选。自建节点或其他来源的节点会合并到一起，端口号接续分配。留空则只处理上面的配置。</div>
+    </div>
+
+    <!-- Step 2: Settings -->
+    <div class="card">
+      <div class="card-title"><span class="num">3</span> 配置参数</div>
+      <div class="row">
+        <div class="field">
+          <label>起始端口</label>
+          <input type="number" id="startPort" value="50000" min="1025" max="65535">
+        </div>
+        <div class="field">
+          <label>代理类型</label>
+          <select id="proxyType">
+            <option value="mixed">mixed (HTTP+SOCKS)</option>
+            <option value="socks">socks5</option>
+            <option value="http">http</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>输出模式</label>
+          <select id="outputMode">
+            <option value="full">完整 config.yaml（保留源配置）</option>
+            <option value="listeners">仅 listeners</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Generate -->
+    <div class="card">
+      <div class="card-title"><span class="num">4</span> 生成结果</div>
+
+      <div class="actions" style="margin-top:0; margin-bottom:16px;">
+        <button class="btn btn-primary" onclick="generate()">⚡ 生成配置</button>
+        <button class="btn btn-success" onclick="copyOutput()">📋 复制结果</button>
+        <button class="btn btn-secondary" onclick="downloadOutput()">💾 下载 YAML</button>
+        <button class="btn btn-danger" onclick="clearAll()">✕ 清空</button>
+      </div>
+
+      <div class="stats" id="stats" style="display:none;"></div>
+
+      <div class="output-wrap">
+        <div id="output">等待生成...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let generatedYaml = '';
+
+    // Parse proxy names from YAML text (with or without proxies: header)
+    function parseNamesFromYaml(input) {
+      const names = [];
+      if (!input.trim()) return names;
+
+      let proxiesText = input;
+      const allLines = input.split('\n');
+      let pStart = -1, pEnd = allLines.length;
+      for (let i = 0; i < allLines.length; i++) {
+        if (/^proxies\s*:/.test(allLines[i])) {
+          pStart = i + 1;
+          for (let j = i + 1; j < allLines.length; j++) {
+            if (/^\S/.test(allLines[j]) && !allLines[j].startsWith('#')) {
+              pEnd = j;
+              break;
+            }
+          }
+          break;
+        }
+      }
+      if (pStart >= 0) {
+        proxiesText = allLines.slice(pStart, pEnd).join('\n');
+      }
+
+      for (const line of proxiesText.split('\n')) {
+        const trimmed = line.trim();
+        // Format: - name: xxx
+        let m = trimmed.match(/^-\s*name:\s*(.+)/);
+        if (m) {
+          names.push(m[1].trim().replace(/^['"]|['"]$/g, ''));
+          continue;
+        }
+        // Format: - {name: "xxx", ...} or - {"name":"xxx", ...}
+        m = trimmed.match(/^-\s*\{.*?"?name"?\s*:\s*"([^"]+)"/);
+        if (m) { names.push(m[1].trim()); continue; }
+        m = trimmed.match(/^-\s*\{.*?name\s*:\s*'([^']+)'/);
+        if (m) { names.push(m[1].trim()); continue; }
+        m = trimmed.match(/^-\s*\{.*?name\s*:\s*([^,}'"]+)/);
+        if (m) names.push(m[1].trim());
+      }
+      return names;
+    }
+
+    // Parse names from protocol links
+    function parseNamesFromLinks(input) {
+      const names = [];
+      const lines = input.split('\n').map(l => l.trim()).filter(Boolean);
+      lines.forEach((line, i) => {
+        let name = '';
+        try {
+          if (line.startsWith('ss://')) {
+            const hash = line.lastIndexOf('#');
+            name = hash > -1 ? decodeURIComponent(line.slice(hash + 1)) : `ss-node-${i}`;
+          } else if (line.startsWith('vmess://')) {
+            const json = JSON.parse(atob(line.replace('vmess://', '')));
+            name = json.ps || json.remarks || `vmess-node-${i}`;
+          } else if (line.startsWith('vless://') || line.startsWith('trojan://')) {
+            const hash = line.lastIndexOf('#');
+            name = hash > -1 ? decodeURIComponent(line.slice(hash + 1)) : `node-${i}`;
+          } else if (line.startsWith('hy2://') || line.startsWith('hysteria2://')) {
+            const hash = line.lastIndexOf('#');
+            name = hash > -1 ? decodeURIComponent(line.slice(hash + 1)) : `hy2-node-${i}`;
+          }
+        } catch { name = `node-${i}`; }
+        if (name) names.push(name.trim());
+      });
+      return names;
+    }
+
+    // Detect input type and parse names
+    function parseNames(input) {
+      if (!input.trim()) return [];
+      const firstLine = input.trim().split('\n')[0].trim();
+      // Check if it looks like protocol links
+      if (/^(ss|vmess|vless|trojan|hy2|hysteria2):\/\//.test(firstLine)) {
+        return parseNamesFromLinks(input);
+      }
+      return parseNamesFromYaml(input);
+    }
+
+    // Extract proxies: block from input
+    function extractProxiesBlock(input) {
+      if (!input.trim()) return null;
+      const lines = input.split('\n');
+      let start = -1, end = lines.length;
+      for (let i = 0; i < lines.length; i++) {
+        if (/^proxies\s*:/.test(lines[i])) {
+          start = i;
+          for (let j = i + 1; j < lines.length; j++) {
+            if (/^\S/.test(lines[j]) && !lines[j].startsWith('#')) { end = j; break; }
+          }
+          break;
+        }
+      }
+      if (start >= 0) return lines.slice(start, end).join('\n').trimEnd();
+      // No header — raw entries
+      const trimmed = input.replace(/^\s*\n/, '');
+      if (trimmed.match(/^\s*-\s*(name:|{)/m)) {
+        const entryLines = trimmed.split('\n');
+        let minIndent = Infinity;
+        for (const l of entryLines) {
+          if (!l.trim()) continue;
+          const sp = l.match(/^(\s*)/)[1].length;
+          if (sp < minIndent) minIndent = sp;
+        }
+        return 'proxies:\n' + entryLines.map(l => '  ' + l.slice(minIndent)).join('\n');
+      }
+      return null;
+    }
+
+    // Extract just the indented entries (without "proxies:" header)
+    function extractProxiesEntries(input) {
+      if (!input.trim()) return '';
+      const block = extractProxiesBlock(input);
+      if (!block) return '';
+      const lines = block.split('\n');
+      if (/^proxies\s*:/.test(lines[0])) return lines.slice(1).join('\n');
+      return block;
+    }
+
+    // Convert inline YAML proxy entry to expanded multi-line format
+    // e.g. - {name: vless-44778, server: 1.2.3.4, reality-opts: {public-key: xxx}, ...}
+    // becomes:
+    //   - name: vless-44778
+    //     server: 1.2.3.4
+    //     reality-opts:
+    //       public-key: xxx
+    function expandInlineProxy(line) {
+      const trimmed = line.trim();
+      // Check if it's inline format: - { ... } or - {"name":...}
+      const m = trimmed.match(/^-\s*\{(.+)\}\s*$/);
+      if (!m) return line; // already expanded or not inline
+
+      // Parse the inner content respecting nested braces
+      function parseObj(str) {
+        const pairs = [];
+        let i = 0, len = str.length;
+        while (i < len) {
+          // skip whitespace
+          while (i < len && str[i] === ' ') i++;
+          if (i >= len) break;
+          // read key (may be quoted)
+          let key = '';
+          if (str[i] === '"') {
+            i++; // skip opening quote
+            while (i < len && str[i] !== '"') key += str[i++];
+            i++; // skip closing quote
+          } else {
+            while (i < len && str[i] !== ':') key += str[i++];
+          }
+          key = key.trim();
+          if (i >= len || str[i] !== ':') break;
+          i++; // skip ':'
+          while (i < len && str[i] === ' ') i++; // skip space after :
+
+          // read value
+          let value;
+          if (str[i] === '{') {
+            // nested object — find matching brace
+            let depth = 1, start = i + 1;
+            i++;
+            while (i < len && depth > 0) {
+              if (str[i] === '{') depth++;
+              else if (str[i] === '}') depth--;
+              i++;
+            }
+            value = { nested: parseObj(str.slice(start, i - 1)) };
+          } else if (str[i] === '"') {
+            // quoted string value
+            i++;
+            let v = '';
+            while (i < len && str[i] !== '"') v += str[i++];
+            i++; // skip closing quote
+            value = '"' + v + '"';
+          } else {
+            // unquoted value — read until comma or end
+            let v = '';
+            while (i < len && str[i] !== ',') v += str[i++];
+            value = v.trim();
+          }
+          pairs.push({ key, value });
+          // skip comma
+          if (i < len && str[i] === ',') i++;
+          while (i < len && str[i] === ' ') i++;
+        }
+        return pairs;
+      }
+
+      function renderPairs(pairs, indent) {
+        let out = '';
+        for (const { key, value } of pairs) {
+          if (value && typeof value === 'object' && value.nested) {
+            out += indent + key + ':\n';
+            out += renderPairs(value.nested, indent + '  ');
+          } else {
+            out += indent + key + ': ' + value + '\n';
+          }
+        }
+        return out;
+      }
+
+      const pairs = parseObj(m[1]);
+      return '  - ' + pairs.map(({ key, value }, idx) => {
+        const prefix = idx === 0 ? '' : '    ';
+        if (value && typeof value === 'object' && value.nested) {
+          return prefix + key + ':\n' + renderPairs(value.nested, '      ');
+        }
+        return prefix + key + ': ' + value;
+      }).join('\n').trimEnd();
+    }
+
+    // Expand all inline proxy entries in a proxies entries block
+    function expandAllInlineProxies(entriesText) {
+      if (!entriesText.trim()) return entriesText;
+      const lines = entriesText.split('\n');
+      const result = [];
+      for (const line of lines) {
+        if (line.trim().match(/^-\s*\{/)) {
+          result.push(expandInlineProxy(line));
+        } else {
+          result.push(line);
+        }
+      }
+      return result.join('\n');
+    }
+
+    function yamlProxyName(name) {
+      if (/[\[\]*:{}#&!|>'"%@`]/.test(name) || /^\s/.test(name) || /\s$/.test(name)) {
+        return "'" + name.replace(/'/g, "''") + "'";
+      }
+      return name;
+    }
+
+    // Find a top-level YAML block and return its [start, end) line range.
+    function findTopLevelBlock(lines, key) {
+      const keyPattern = new RegExp('^' + key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*:');
+      let start = -1;
+      for (let i = 0; i < lines.length; i++) {
+        if (keyPattern.test(lines[i])) { start = i; break; }
+      }
+      if (start < 0) return null;
+      let end = lines.length;
+      for (let i = start + 1; i < lines.length; i++) {
+        if (/^[A-Za-z0-9_-]+\s*:/.test(lines[i])) { end = i; break; }
+      }
+      return { start, end };
+    }
+
+    // Clash Verge may inject the airport DNS through a profile override, so it
+    // can be missing from the YAML copied by the user. Add it only when absent.
+    function ensureAirportProxyDns(lines) {
+      const dnsBlock = findTopLevelBlock(lines, 'dns');
+      if (!dnsBlock) return lines;
+
+      const hasProxyServerNameserver = lines
+        .slice(dnsBlock.start + 1, dnsBlock.end)
+        .some(line => /^\s{2}proxy-server-nameserver\s*:/.test(line));
+      if (hasProxyServerNameserver) return lines;
+
+      const airportDnsLines = [
+        '  proxy-server-nameserver:',
+        "    - 'https://20.247.42.211:36290/dns-query/clash?site=huojian'",
+        "    - 'https://20.239.241.138:55228/dns-query/clash?site=huojian'",
+        "    - 'https://104.208.122.199:62201/dns-query/clash?site=huojian'"
+      ];
+      lines.splice(dnsBlock.end, 0, ...airportDnsLines);
+      return lines;
+    }
+
+    // Preserve the complete airport configuration and only replace/insert listeners.
+    function mergeListenersIntoFullConfig(source, listenersText, extraEntries) {
+      let lines = source.replace(/\r\n/g, '\n').split('\n');
+
+      // Keep the source config intact, but restore the airport-specific DNS
+      // that Clash Verge normally adds outside the subscription YAML.
+      lines = ensureAirportProxyDns(lines);
+
+      // Remove listeners generated by a previous run to make conversion repeatable.
+      const oldListeners = findTopLevelBlock(lines, 'listeners');
+      if (oldListeners) lines.splice(oldListeners.start, oldListeners.end - oldListeners.start);
+
+      // Merge optional YAML proxy entries into the existing proxies block.
+      if (extraEntries && extraEntries.trim()) {
+        const proxiesBlock = findTopLevelBlock(lines, 'proxies');
+        if (!proxiesBlock) throw new Error('完整配置中没有找到 proxies:，无法合并额外节点。');
+        const normalizedExtra = extraEntries.replace(/\r\n/g, '\n').split('\n');
+        lines.splice(proxiesBlock.end, 0, ...normalizedExtra);
+      }
+
+      // Insert listeners immediately before proxies; all DNS/rules/groups remain untouched.
+      const proxiesBlock = findTopLevelBlock(lines, 'proxies');
+      const listenerLines = listenersText.trimEnd().split('\n');
+      if (proxiesBlock) {
+        lines.splice(proxiesBlock.start, 0, ...listenerLines);
+      } else {
+        lines.push(...listenerLines);
+      }
+      return lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
+    }
+
+    function generate() {
+      const yamlInput = document.getElementById('inputYaml').value.trim();
+      const extraInput = document.getElementById('inputExtra').value.trim();
+      const startPort = parseInt(document.getElementById('startPort').value) || 50000;
+      const proxyType = document.getElementById('proxyType').value;
+      const outputMode = document.getElementById('outputMode').value;
+
+      if (!yamlInput && !extraInput) {
+        showToast('请至少在一个输入框中粘贴内容', true);
+        return;
+      }
+
+      // Parse names from both inputs
+      const namesA = parseNames(yamlInput);
+      const namesB = parseNames(extraInput);
+      const allNames = [...namesA, ...namesB];
+
+      if (allNames.length === 0) {
+        document.getElementById('output').textContent = '❌ 未解析到任何节点，请检查输入格式。';
+        document.getElementById('stats').style.display = 'none';
+        return;
+      }
+
+      const endPort = startPort + allNames.length - 1;
+
+      // Generate listeners
+      let listeners = 'listeners:\n';
+      allNames.forEach((name, i) => {
+        listeners += `  - name: ${proxyType}${i}\n`;
+        listeners += `    type: ${proxyType}\n`;
+        listeners += `    port: ${startPort + i}\n`;
+        listeners += `    proxy: ${yamlProxyName(name)}\n`;
+      });
+
+      if (outputMode === 'full') {
+        if (!yamlInput || !/^proxies\s*:/m.test(yamlInput)) {
+          showToast('完整模式必须粘贴包含 proxies: 的完整 Clash 配置。', true);
+          return;
+        }
+        if (extraInput && /^(ss|vmess|vless|trojan|hy2|hysteria2):\/\//m.test(extraInput.trim())) {
+          showToast('完整模式的额外节点请使用 YAML proxies 格式，协议链接无法直接生成代理定义。', true);
+          return;
+        }
+        try {
+          const entriesB = extractProxiesEntries(extraInput);
+          generatedYaml = mergeListenersIntoFullConfig(yamlInput, listeners, entriesB);
+        } catch (err) {
+          showToast(err.message || '合并配置失败。', true);
+          return;
+        }
+      } else {
+        generatedYaml = listeners;
+      }
+
+      document.getElementById('output').textContent = generatedYaml;
+
+      const statsEl = document.getElementById('stats');
+      statsEl.style.display = 'flex';
+      let statsHtml = `<div class="stat">总节点 <strong>${allNames.length}</strong></div>`;
+      if (namesA.length && namesB.length) {
+        statsHtml += `<div class="stat">配置A <strong>${namesA.length}</strong></div>`;
+        statsHtml += `<div class="stat">配置B <strong>${namesB.length}</strong></div>`;
+      }
+      statsHtml += `<div class="stat">端口 <strong>${startPort} - ${endPort}</strong></div>`;
+      statsHtml += `<div class="stat">类型 <strong>${proxyType}</strong></div>`;
+      statsEl.innerHTML = statsHtml;
+
+      showToast(`✅ 生成成功！共 ${allNames.length} 个节点`);
+    }
+
+    function copyOutput() {
+      if (!generatedYaml) { showToast('请先生成内容', true); return; }
+      navigator.clipboard.writeText(generatedYaml).then(() => showToast('已复制到剪贴板'));
+    }
+
+    function downloadOutput() {
+      if (!generatedYaml) { showToast('请先生成内容', true); return; }
+      const blob = new Blob([generatedYaml], { type: 'text/yaml' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'config.yaml';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      showToast('已下载 config.yaml');
+    }
+
+    function clearAll() {
+      document.getElementById('inputYaml').value = '';
+      document.getElementById('inputExtra').value = '';
+      document.getElementById('output').textContent = '等待生成...';
+      document.getElementById('stats').style.display = 'none';
+      generatedYaml = '';
+    }
+
+    function showToast(msg, isError) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.background = isError ? 'var(--danger)' : 'var(--success)';
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2000);
+    }
+  </script>
+</body>
+</html>
